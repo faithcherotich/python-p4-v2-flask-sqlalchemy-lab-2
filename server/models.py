@@ -11,38 +11,61 @@ metadata = MetaData(naming_convention={
 db = SQLAlchemy(metadata=metadata)
 
 
-class Customer(db.Model):
+class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    
-    reviews = db.relationship('Review', back_populates='customer', lazy=True)
+
+    # Relationship with Review
+    reviews = db.relationship('Review', back_populates='customer')
+
+    # Association proxy to get items through reviews
+    items = association_proxy('reviews', 'item')
+
+    # Exclude 'reviews.customer' from serialization
+    serialize_rules = ('-reviews.customer',)
 
     def __repr__(self):
         return f'<Customer {self.id}, {self.name}>'
 
 
-class Item(db.Model):
+class Item(db.Model, SerializerMixin):
     __tablename__ = 'items'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     price = db.Column(db.Float)
-    
-    reviews = db.relationship('Review', back_populates='item', lazy=True)
+
+    # Relationship with Review
+    reviews = db.relationship('Review', back_populates='item')
+
+    # Association proxy for convenience
+    customers = association_proxy('reviews', 'customer')
+
+    # Exclude 'reviews.item' from serialization
+    serialize_rules = ('-reviews.item',)
 
     def __repr__(self):
         return f'<Item {self.id}, {self.name}, {self.price}>'
 
-class Review(db.Model):
-    __tablename__= "reviews"
-    
+
+class Review(db.Model, SerializerMixin):
+    __tablename__ = 'reviews'
+
     id = db.Column(db.Integer, primary_key=True)
-    comment= db.Column(db.String)
+    comment = db.Column(db.String)
+
+    # Foreign key relationships
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'))
     item_id = db.Column(db.Integer, db.ForeignKey('items.id'))
-    
+
+    # Relationships with Customer and Item
     customer = db.relationship('Customer', back_populates='reviews')
-    item = db.relationship('item', back_populates='reviews')
-    
+    item = db.relationship('Item', back_populates='reviews')
+
+    # Exclude 'customer.reviews' and 'item.reviews' from serialization
+    serialize_rules = ('-customer.reviews', '-item.reviews')
+
+    def __repr__(self):
+        return f'<Review {self.id}, {self.comment}>'
